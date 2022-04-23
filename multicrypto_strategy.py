@@ -19,9 +19,9 @@ from sqlalchemy import create_engine
 import pprint
 
 #import the strategies from the Python script
-from ipynb.fs.full.MA_strategies import SMA, EMA, MOM, Simple_MOM, Low_Vol, BEST_50MA, BEST_50MA_noMLN
+from ipynb.fs.full.MA_strategies import SMA, Simple_MOM
 
-#Import the databases computed with the other Python script
+#Import the databases (CHANGE FOR YOUR OWN DATASOURCE)
 engine12h = sqlalchemy.create_engine('sqlite:///CRYPTO_DB_12h.db')
 engine1d = sqlalchemy.create_engine('sqlite:///CRYPTO_DB_1d.db')
 engine1w = sqlalchemy.create_engine('sqlite:///CRYPTO_DB_1w.db')
@@ -31,7 +31,8 @@ engine1M = sqlalchemy.create_engine('sqlite:///CRYPTO_DB_1M.db')
 engine = [engine1d, engine12h, engine1w, engine1M]
 freq = ['1d','12h','1w','1M']   
 
-#set parameters
+
+#set parameters of the strategy
 frq = '1d'
 mom = 7 #momentum period
 N = 20 #number of holding in the long and short legs
@@ -40,23 +41,10 @@ W = 45 #low volatility and SMA window
 S = 1 #select 1 if long short, 0 if long only
 reverse = 0 #select 1 if you want to inverse the short and the long leg
 
-#import USDT coins from the other Python script
+#select coins
 from ipynb.fs.full.Binance_tokens import get_all_USDT_coins
 coins = get_all_USDT_coins()
 #coins = ('BTCUSDT','ETHUSDT')
-
-
-#smart contract platforms on Polygon
-#coins = ('BTCUSDT','ETHUSDT','LUNAUSDT','MATICUSDT','MLNUSDT')
-'''
-coins = ('LINKUSDT','VETUSDT','NULSUSDT','ICXUSDT',
-        'ETCUSDT','TRXUSDT','ONTUSDT','XLMUSDT',
-        'IOTAUSDT','TUSDUSDT','EOSUSDT','XRPUSDT',
-        'ADAUSDT','QTUMUSDT','LTCUSDT','NEOUSDT',
-        'BNBUSDT','ETHUSDT','BTCUSDT')'''
-
-#assets universe polygon
-#coins = ('ETHUSDT', 'BTCUSDT', 'MATICUSDT', 'ADAUSDT', 'LINKUSDT', 'BNBUSDT', 'DOTUSDT', 'QUICKUSDT', 'SANDUSDT', 'UMAUSDT', 'UNIUSDT', '1INCHUSDT', 'ALGOUSDT', 'BATUSDT', 'DOGEUSDT', 'EOSUSDT', 'LTCUSDT', 'LUNAUSDT', 'MANAUSDT', 'MFTUSDT', 'OMGUSDT', 'SNXUSDT', 'SOLUSDT', 'SUSHIUSDT')
 
 #get prices
 data = pd.DataFrame()
@@ -71,26 +59,18 @@ for coin in coins:
         #data = prices['Close'].to_frame().combine_first(data)
         #data = data.rename(columns={'Close':coin})        
 
-data = data[-109:].dropna(axis=1, thresh=109)
-#data = data.dropna(axis=0)
+data = data.dropna(axis=0)
 
 
 # create the strategy
 #algo = SMA(data, W, S, Max_w)
-#algo = EMA(data, S, Max_w)
-#algo = MOM(data, S, mom, N, Max_w)
 #algo = Simple_MOM(data)
-algo = Low_Vol(data, S, W, N, Max_w, reverse)
-#algo = BEST_50MA(data)
-
-#bkweights = {'ETHUSDT':1}
 
 bkweights = {'BTCUSDT': 0.5,
              'ETHUSDT':0.5}
 
 
-
-strat = bt.Strategy('Low Volatility', [bt.algos.RunOnDate(*algo.weights.index),
+strat = bt.Strategy('SMA', [bt.algos.RunOnDate(*algo.weights.index),
                               algo,
                               bt.algos.Rebalance()])
 
@@ -123,7 +103,6 @@ res = bt.backtest.Result(btstrat, btbench)
 res.display()
 
 # first let's see an equity curve
-res.prices = res.prices[45:]
 res.plot().set_yscale('log')
 
 #relative performance
@@ -136,8 +115,7 @@ res.plot_histogram()
 #res.plot_security_weights(filter=['BTCUSDT','ETHUSDT'])
 res.plot_security_weights()
 
-pf.create_full_tear_sheet(res.get("Buckets Easy Systematic Trading - BEST50").prices.pct_change())
-#pf.create_full_tear_sheet(res.get("B&H").prices.pct_change())
+pf.create_full_tear_sheet(res.get("SMA").prices.pct_change())
 
 
 #turnover
